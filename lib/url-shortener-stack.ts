@@ -2,8 +2,10 @@ import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AppConfig } from './config';
 import { UrlApi } from './constructs/api';
+import { UrlCdn } from './constructs/cdn';
 import { UrlDatabase } from './constructs/database';
 import { UrlFunctions } from './constructs/functions';
+import { UrlWaf } from './constructs/waf';
 
 export interface UrlShortenerStackProps extends StackProps {
   readonly config: AppConfig;
@@ -15,13 +17,15 @@ export interface UrlShortenerStackProps extends StackProps {
  * Constructs are composed here across the implementation phases:
  *   - DynamoDB table          (Phase 2)  ✓
  *   - Lambda handlers + API    (Phases 3-4)  ✓
- *   - CloudFront + optional WAF (Phase 5)
+ *   - CloudFront + optional WAF (Phase 5)  ✓
  *   - CloudWatch observability  (Phase 6)
  */
 export class UrlShortenerStack extends Stack {
   public readonly database: UrlDatabase;
   public readonly functions: UrlFunctions;
   public readonly api: UrlApi;
+  public readonly waf?: UrlWaf;
+  public readonly cdn: UrlCdn;
 
   constructor(scope: Construct, id: string, props: UrlShortenerStackProps) {
     super(scope, id, props);
@@ -38,6 +42,18 @@ export class UrlShortenerStack extends Stack {
       shorten: this.functions.shorten,
       redirect: this.functions.redirect,
       stats: this.functions.stats,
+    });
+
+    let webAclArn: string | undefined;
+    if (config.enableWaf) {
+      this.waf = new UrlWaf(this, 'Waf');
+      webAclArn = this.waf.webAclArn;
+    }
+
+    this.cdn = new UrlCdn(this, 'Cdn', {
+      httpApi: this.api.httpApi,
+      config,
+      webAclArn,
     });
 
     new CfnOutput(this, 'ApiUrl', {
