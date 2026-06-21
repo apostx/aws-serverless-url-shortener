@@ -101,6 +101,27 @@ test/infra/                CDK assertion + snapshot tests
 load/                      Artillery load test
 ```
 
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): on every push/PR — ESLint, Prettier check,
+  type-check, Jest with coverage, and `cdk synth`. PRs also run commitlint.
+- **Deploy** (`.github/workflows/deploy.yml`): dev → prod via GitHub OIDC, gated
+  behind the `DEPLOY_ENABLED` variable; prod requires a GitHub Environment
+  reviewer. The file header documents the one-time IAM/OIDC setup.
+- **Releases**: [release-please](https://github.com/googleapis/release-please)
+  opens a release PR that bumps the version and updates `CHANGELOG.md` from the
+  Conventional Commit history.
+
+## Load testing
+
+See [load/README.md](load/README.md): `npx artillery run -t <url> load/load-test.yml`.
+
+## Documentation
+
+- [Architecture & design decisions](docs/architecture.md)
+- [Operations runbook](docs/runbook.md)
+- [Original spec](docs/requirements/)
+
 ## Contributing
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/) and automated SemVer.

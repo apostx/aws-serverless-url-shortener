@@ -1,0 +1,54 @@
+# Artillery load test for the URL shortener.
+#
+# Run against a deployed environment (pass the base URL with -t):
+#   npx artillery@latest run -t https://<api-or-cloudfront-domain> load/load-test.yml
+#
+# Optionally capture a report:
+#   npx artillery@latest run -t https://... --output results.json load/load-test.yml
+#   npx artillery@latest report results.json
+config:
+  target: '{{ $processEnvironment.TARGET_URL }}'
+  http:
+    timeout: 10
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: Warm-up
+    - duration: 120
+      arrivalRate: 50
+      rampTo: 100
+      name: Ramp-up
+    - duration: 300
+      arrivalRate: 100
+      name: Peak
+  plugins:
+    expect: {}
+    ensure: {}
+  ensure:
+    thresholds:
+      - http.response_time.p95: 100
+      - http.response_time.p99: 200
+    conditions:
+      - expression: http.codes.201 > 0
+      - expression: http.codes.302 > 0
+
+scenarios:
+  - name: Shorten then redirect
+    flow:
+      - post:
+          url: /shorten
+          headers:
+            content-type: application/json
+          json:
+            originalUrl: https://aws.amazon.com/lambda
+          capture:
+            - json: $.shortCode
+              as: code
+          expect:
+            - statusCode: 201
+            - hasProperty: shortCode
+      - get:
+          url: /{{ code }}
+          followRedirect: false
+          expect:
+            - statusCode: 302
