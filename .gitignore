@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# CDK
+cdk.out/
+.cdk.staging/
+cdk.context.json
+
+# Build / type output
+*.d.ts
+dist/
+*.tsbuildinfo
+
+# Test
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Load test artifacts
+load/results.json
+load/report.html
