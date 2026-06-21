@@ -5,6 +5,7 @@ import { UrlApi } from './constructs/api';
 import { UrlCdn } from './constructs/cdn';
 import { UrlDatabase } from './constructs/database';
 import { UrlFunctions } from './constructs/functions';
+import { UrlObservability } from './constructs/observability';
 import { UrlWaf } from './constructs/waf';
 
 export interface UrlShortenerStackProps extends StackProps {
@@ -18,7 +19,7 @@ export interface UrlShortenerStackProps extends StackProps {
  *   - DynamoDB table          (Phase 2)  ✓
  *   - Lambda handlers + API    (Phases 3-4)  ✓
  *   - CloudFront + optional WAF (Phase 5)  ✓
- *   - CloudWatch observability  (Phase 6)
+ *   - CloudWatch observability  (Phase 6)  ✓
  */
 export class UrlShortenerStack extends Stack {
   public readonly database: UrlDatabase;
@@ -26,6 +27,7 @@ export class UrlShortenerStack extends Stack {
   public readonly api: UrlApi;
   public readonly waf?: UrlWaf;
   public readonly cdn: UrlCdn;
+  public readonly observability?: UrlObservability;
 
   constructor(scope: Construct, id: string, props: UrlShortenerStackProps) {
     super(scope, id, props);
@@ -55,6 +57,17 @@ export class UrlShortenerStack extends Stack {
       config,
       webAclArn,
     });
+
+    if (config.enableAlarms) {
+      this.observability = new UrlObservability(this, 'Observability', {
+        shorten: this.functions.shorten,
+        redirect: this.functions.redirect,
+        stats: this.functions.stats,
+        table: this.database.table,
+        httpApi: this.api.httpApi,
+        config,
+      });
+    }
 
     new CfnOutput(this, 'ApiUrl', {
       value: this.api.httpApi.apiEndpoint,
