@@ -1,0 +1,70 @@
+# Continuous deployment via GitHub OIDC (no long-lived AWS keys).
+#
+# Gated until you opt in. To enable:
+#   1. Create an IAM role trusting GitHub's OIDC provider (token.actions.githubusercontent.com)
+#      with permission to deploy the CDK stacks, and bootstrap CDK in the account/region.
+#   2. Repo secret  AWS_ACCOUNT_ID   = your 12-digit account id
+#   3. Repo variable DEPLOY_ROLE_NAME = the IAM role name (e.g. GitHubActionsDeploy)
+#   4. Repo variable DEPLOY_ENABLED   = true
+#   5. Configure GitHub Environments "development" and "production"
+#      (add a required reviewer on "production" for manual approval).
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write # required for OIDC
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    name: Deploy dev
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ vars.DEPLOY_ROLE_NAME }}
+          aws-region: us-east-1
+      - name: Deploy UrlShortener-Dev
+        run: npx cdk deploy UrlShortener-Dev --require-approval never --outputs-file cdk-outputs.json
+      - name: Smoke test
+        run: |
+          API_URL=$(node -p "require('./cdk-outputs.json')['UrlShortener-Dev'].ApiUrl")
+          bash scripts/smoke-test.sh "$API_URL"
+
+  deploy-prod:
+    name: Deploy prod
+    needs: deploy-dev
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment: production # add a required reviewer here for manual approval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ vars.DEPLOY_ROLE_NAME }}
+          aws-region: us-east-1
+      - name: Deploy UrlShortener-Prod
+        run: npx cdk deploy UrlShortener-Prod --require-approval never
