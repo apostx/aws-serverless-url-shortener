@@ -4,6 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/test'],
   testMatch: ['**/*.test.ts'],
+  setupFiles: ['<rootDir>/test/jest.setup.ts'],
   clearMocks: true,
   collectCoverageFrom: ['lib/lambda/**/*.ts', '!lib/lambda/**/*.d.ts'],
   coverageDirectory: 'coverage',
