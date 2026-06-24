@@ -1,6 +1,6 @@
 {
   "name": "serverless-url-shortener",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Production-grade serverless URL shortener on AWS (Lambda, API Gateway HTTP API v2, DynamoDB, CloudFront, WAF) built with AWS CDK v2 + TypeScript.",
   "license": "MIT",
   "author": "apostx",
